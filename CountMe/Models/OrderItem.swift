@@ -69,6 +69,41 @@ extension OrderItem {
             price: 35000,
             sideDishes: ["Nasi Putih 1 Porsi", "Lontong", "Teh Botol"],
             verificationStatus: .pending
+        ),
+        OrderItem(
+            title: "Tongseng Kambing",
+            dateTime: Date().addingTimeInterval(-5400),
+            price: 50000,
+            sideDishes: ["Nasi Putih 1 Porsi", "Kerupuk Udang"],
+            verificationStatus: .verified
+        ),
+        OrderItem(
+            title: "Nasi Goreng Spesial",
+            dateTime: Date().addingTimeInterval(-36000),
+            price: 30000,
+            sideDishes: ["Telur Ceplok", "Acar Timun", "Krupuk"],
+            verificationStatus: .pending
+        ),
+        OrderItem(
+            title: "Bakso Malang",
+            dateTime: Date().addingTimeInterval(-18000),
+            price: 25000,
+            sideDishes: ["Tahu Isi", "Kerupuk Pangsit"],
+            verificationStatus: .verified
+        ),
+        OrderItem(
+            title: "Mie Ayam Jamur",
+            dateTime: Date().addingTimeInterval(-27000),
+            price: 20000,
+            sideDishes: ["Bakso Kecil 2 Butir", "Kerupuk"],
+            verificationStatus: .pending
+        ),
+        OrderItem(
+            title: "Rendang Sapi",
+            dateTime: Date().addingTimeInterval(-144000),
+            price: 55000,
+            sideDishes: ["Nasi Putih 1 Porsi", "Sambal Hijau", "Kerupuk"],
+            verificationStatus: .verified
         )
     ]
 }

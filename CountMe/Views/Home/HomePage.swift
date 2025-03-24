@@ -14,38 +14,46 @@ struct HomePage: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Filter header
-                Picker("Filter", selection: $viewModel.currentFilter) {
-                    ForEach(OrderFilter.allCases, id: \.self) { filter in
-                        Text(filter.title).tag(filter)
+            ZStack(alignment: .top) {
+                // Main content
+                ScrollView {
+                    LazyVStack(pinnedViews: [.sectionHeaders]) {
+                        Section(header: filterHeader) {
+                            if viewModel.filteredOrders.isEmpty {
+                                EmptyStateView {
+                                    showAddReceiptOptions = true
+                                }
+                                .padding(.top, 40)
+                            } else {
+                                ForEach(viewModel.filteredOrders) { order in
+                                    OrderListItem(
+                                        order: order,
+                                        onDelete: {
+                                            orderToDelete = order
+                                            showDeleteConfirmation = true
+                                        },
+                                        onEdit: {
+                                            viewModel.editOrder(order)
+                                        }
+                                    )
+                                    .padding(.horizontal)
+                                }
+                            }
+                            
+                            // Add space at bottom for the floating button
+                            Spacer().frame(height: 80)
+                        }
                     }
                 }
-                .pickerStyle(.segmented)
-                .padding()
-                .background(Color.graySurface)
                 
-                // Order list
-                OrderListView(
-                    orders: viewModel.filteredOrders,
-                    onDelete: { order in
-                        orderToDelete = order
-                        showDeleteConfirmation = true
-                    },
-                    onEdit: { order in
-                        viewModel.editOrder(order)
-                    }
-                )
+                // Floating action button
+                VStack {
+                    Spacer()
+                    addReceiptButton
+                }
             }
             .navigationTitle("CountMe")
             .navigationBarTitleDisplayMode(.large)
-            .overlay {
-                if viewModel.filteredOrders.isEmpty {
-                    EmptyStateView {
-                        showAddReceiptOptions = true
-                    }
-                }
-            }
             .confirmationDialog(
                 "Delete Order",
                 isPresented: $showDeleteConfirmation,
@@ -60,35 +68,6 @@ struct HomePage: View {
             } message: {
                 Text("Are you sure you want to delete this order?")
             }
-            .overlay(alignment: .bottom) {
-                Button("Add receipt", systemImage: "doc.text.viewfinder") {
-                    showAddReceiptOptions = true
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.accentColor)
-                .foregroundColor(.white)
-                .fontWeight(.semibold)
-                .cornerRadius(16)
-                .padding(.horizontal)
-                .confirmationDialog(
-                    "Receipt input method",
-                    isPresented: $showAddReceiptOptions
-                ) {
-                    Button("Take a photo") {
-                        showAddReceiptOptions = false
-                        showDocumentScanner = true
-                    }
-                    Button("Choose from gallery") {
-                        showAddReceiptOptions = false
-                        showPhotoLibrary = true
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("Select input method")
-                }
-            }
-            // Multi-select Photo picker
             .photosPicker(
                 isPresented: $showPhotoLibrary,
                 selection: $viewModel.selectedPhotoItems,
@@ -102,7 +81,6 @@ struct HomePage: View {
                     await viewModel.processSelectedPhotos()
                 }
             }
-            // Document scanner view
             .fullScreenCover(isPresented: $showDocumentScanner) {
                 DocumentScannerView(
                     scannedImages: $viewModel.scannedImages,
@@ -117,7 +95,6 @@ struct HomePage: View {
                     }
                 }
             }
-            // OCR Results sheet
             .sheet(isPresented: $viewModel.showingOCRResults, onDismiss: {
                 viewModel.resetImageSelection()
             }) {
@@ -129,13 +106,11 @@ struct HomePage: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
-            // Clean up selection when photo picker is about to show
             .onChange(of: showPhotoLibrary) { oldValue, newValue in
                 if newValue == true {
                     viewModel.selectedPhotoItems = []
                 }
             }
-            // Processing overlay
             .overlay {
                 ProcessingOverlay(
                     isVisible: viewModel.isProcessing,
@@ -147,4 +122,56 @@ struct HomePage: View {
             }
         }
     }
+    
+    // MARK: - View Components
+    
+    private var filterHeader: some View {
+        VStack(spacing: 0) {
+            Picker("Filter", selection: $viewModel.currentFilter) {
+                ForEach(OrderFilter.allCases, id: \.self) { filter in
+                    Text(filter.title).tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            
+            Divider()
+        }
+        .background(Material.bar)
+    }
+    
+    private var addReceiptButton: some View {
+        Button("Add receipt", systemImage: "doc.text.viewfinder") {
+            showAddReceiptOptions = true
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(Color.accentColor)
+        .foregroundColor(.white)
+        .fontWeight(.semibold)
+        .cornerRadius(16)
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+        .confirmationDialog(
+            "Receipt input method",
+            isPresented: $showAddReceiptOptions
+        ) {
+            Button("Take a photo") {
+                showAddReceiptOptions = false
+                showDocumentScanner = true
+            }
+            Button("Choose from gallery") {
+                showAddReceiptOptions = false
+                showPhotoLibrary = true
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Select input method")
+        }
+    }
+}
+
+#Preview {
+    HomePage()
 }
