@@ -14,43 +14,53 @@ struct HomePage: View {
     
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .top) {
-                // Main content
-                ScrollView {
-                    LazyVStack(pinnedViews: [.sectionHeaders]) {
-                        Section(header: filterHeader) {
-                            if viewModel.filteredOrders.isEmpty {
-                                EmptyStateView {
-                                    showAddReceiptOptions = true
-                                }
-                                .padding(.top, 40)
-                            } else {
-                                ForEach(viewModel.filteredOrders) { order in
-                                    OrderListItem(
-                                        order: order,
-                                        onDelete: {
-                                            orderToDelete = order
-                                            showDeleteConfirmation = true
-                                        },
-                                        onEdit: {
-                                            viewModel.editOrder(order)
-                                        }
-                                    )
-                                    .padding(.horizontal)
-                                }
+            ZStack(alignment: .bottom) {
+                List {
+                    // Add the filter as a section header inside the List
+                    Section(header:
+                                filterHeader
+                        .listRowInsets(EdgeInsets())
+                        .background(Material.bar)
+                    ) {
+                        if viewModel.filteredOrders.isEmpty {
+                            EmptyStateView {
+                                showAddReceiptOptions = true
                             }
-                            
-                            // Add space at bottom for the floating button
-                            Spacer().frame(height: 80)
+                            .listRowBackground(Color.clear)
+                        } else {
+                            ForEach(viewModel.filteredOrders) { order in
+                                OrderListItem(
+                                    order: order,
+                                    onDelete: {
+                                        orderToDelete = order
+                                        showDeleteConfirmation = true
+                                    },
+                                    onEdit: {
+                                        viewModel.editOrder(order)
+                                    },
+                                    onScanProof: {
+                                        // Store the current order being edited
+                                        viewModel.orderBeingEdited = order
+                                        // Show the document scanner options dialog instead of directly opening scanner
+                                        showAddReceiptOptions = true
+                                    }
+                                )
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                            }
                         }
+                        
+                        // Add space at bottom for the floating button
+                        Color.clear
+                            .frame(height: 70)
+                            .listRowSeparator(.hidden)
                     }
                 }
+                .listStyle(.plain)
+                // This is crucial - it creates sticky headers when scrolling
+                .environment(\.defaultMinListHeaderHeight, 0)
                 
                 // Floating action button
-                VStack {
-                    Spacer()
-                    addReceiptButton
-                }
+                addReceiptButton
             }
             .navigationTitle("CountMe")
             .navigationBarTitleDisplayMode(.large)
@@ -126,7 +136,7 @@ struct HomePage: View {
     // MARK: - View Components
     
     private var filterHeader: some View {
-        VStack(spacing: 0) {
+        VStack() {
             Picker("Filter", selection: $viewModel.currentFilter) {
                 ForEach(OrderFilter.allCases, id: \.self) { filter in
                     Text(filter.title).tag(filter)
@@ -138,7 +148,6 @@ struct HomePage: View {
             
             Divider()
         }
-        .background(Material.bar)
     }
     
     private var addReceiptButton: some View {
@@ -154,7 +163,7 @@ struct HomePage: View {
         .padding(.horizontal)
         .padding(.bottom, 8)
         .confirmationDialog(
-            "Receipt input method",
+            viewModel.orderBeingEdited != nil ? "Add proof for order" : "Receipt input method",
             isPresented: $showAddReceiptOptions
         ) {
             Button("Take a photo") {
@@ -165,9 +174,12 @@ struct HomePage: View {
                 showAddReceiptOptions = false
                 showPhotoLibrary = true
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) {
+                // Reset orderBeingEdited if user cancels
+                viewModel.orderBeingEdited = nil
+            }
         } message: {
-            Text("Select input method")
+            Text(viewModel.orderBeingEdited != nil ? "Select proof input method" : "Select input method")
         }
     }
 }

@@ -6,7 +6,7 @@ struct OrderItem: Identifiable {
     let dateTime: Date
     let price: Double
     let sideDishes: [String]
-    let verificationStatus: VerificationStatus
+    var verificationStatus: VerificationStatus
     
     enum VerificationStatus: String {
         case verified = "Verified"

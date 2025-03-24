@@ -4,6 +4,7 @@ struct OrderListItem: View {
     let order: OrderItem
     let onDelete: () -> Void
     let onEdit: () -> Void
+    let onScanProof: () -> Void  // Add this parameter
     
     let currencyFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -83,6 +84,16 @@ struct OrderListItem: View {
                 Label("Edit", systemImage: "pencil")
             }
             .tint(.blue)
+            
+            // Only show scan proof button for pending items
+            if order.verificationStatus == .pending {
+                Button {
+                    onScanProof()
+                } label: {
+                    Label("Scan Proof", systemImage: "doc.text.viewfinder")
+                }
+                .tint(.orange)
+            }
         }
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
@@ -92,34 +103,4 @@ struct OrderListItem: View {
             }
         }
     }
-}
-
-// Preview with sample data
-#Preview {
-    List {
-        OrderListItem(
-            order: OrderItem(
-                title: "Dinner at Restaurant A",
-                dateTime: Date(),
-                price: 150000,
-                sideDishes: ["Rice", "Soup", "Salad"],
-                verificationStatus: .verified
-            ),
-            onDelete: {},
-            onEdit: {}
-        )
-        
-        OrderListItem(
-            order: OrderItem(
-                title: "Lunch at Cafe B",
-                dateTime: Date().addingTimeInterval(-86400),
-                price: 85000,
-                sideDishes: ["Fries", "Drink"],
-                verificationStatus: .pending
-            ),
-            onDelete: {},
-            onEdit: {}
-        )
-    }
-    .listStyle(.plain)
 }
