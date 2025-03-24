@@ -1,10 +1,13 @@
 import SwiftUI
+import SwiftData
 
 struct MultiOCRResultView: View {
     let images: [UIImage]
     let recognizedTexts: [String]
     @ObservedObject var viewModel: HomeViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    
     @State private var selectedTab = 0
     @State private var showSaveConfirmation = false
     @State private var retakePhotoIndex: Int? = nil
@@ -39,8 +42,11 @@ struct MultiOCRResultView: View {
                                 // Update the parsed receipt in the view model
                                 viewModel.parsedReceipts[selectedTab] = updatedReceipt
                                 
+                                // Get the current image to save with the receipt
+                                let imageToSave = images[selectedTab]
+                                
                                 // Create a new order from this receipt
-                                viewModel.createOrderFromReceipt(updatedReceipt)
+                                viewModel.saveReceipt(at: selectedTab)
                                 
                                 // Show confirmation and dismiss after delay
                                 showSaveConfirmation = true

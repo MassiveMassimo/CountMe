@@ -1,13 +1,16 @@
 import SwiftUI
 import PhotosUI
+import SwiftData
 
 class HomeViewModel: ObservableObject {
     // Services
     let ocrService = OCRService()
     private let receiptParserService = ReceiptParserService()
     
+    // SwiftData ModelContext
+    private var modelContext: ModelContext
+    
     // Published state
-    @Published var orders: [OrderItem] = OrderItem.sampleOrders
     @Published var currentFilter: OrderFilter = .all
     @Published var selectedPhotoItems: [PhotosPickerItem] = []
     @Published var scannedImages: [UIImage] = []
@@ -19,33 +22,59 @@ class HomeViewModel: ObservableObject {
     @Published var showingOCRResults = false
     @Published var orderBeingEdited: OrderItem? // Add this property
     
-    // Computed properties
-    var filteredOrders: [OrderItem] {
-        switch currentFilter {
-        case .all:
-            return orders
-        case .verified:
-            return orders.filter { $0.verificationStatus == .verified }
-        case .pending:
-            return orders.filter { $0.verificationStatus == .pending }
+    // Initialize with ModelContext
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+    }
+    
+    // Function to fetch orders with optional sorting and filtering
+    func fetchOrders(filter: OrderFilter = .all) -> [OrderItem] {
+        let descriptor = FetchDescriptor<OrderItem>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        
+        do {
+            var orders = try modelContext.fetch(descriptor)
+            
+            // Apply filter if needed
+            switch filter {
+            case .all:
+                return orders
+            case .verified:
+                return orders.filter { $0.verificationStatus == .verified }
+            case .pending:
+                return orders.filter { $0.verificationStatus == .pending }
+            }
+        } catch {
+            print("Failed to fetch orders: \(error)")
+            return []
         }
     }
     
     // MARK: - Order Management
     
     func deleteOrder(_ order: OrderItem) {
-        withAnimation {
-            orders.removeAll { $0.id == order.id }
+        modelContext.delete(order)
+        
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to delete order: \(error)")
         }
     }
     
     func editOrder(_ order: OrderItem) {
         print("Edit order: \(order.title)")
         // Implement order editing functionality
+        
+        // After editing, save changes
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to save edited order: \(error)")
+        }
     }
     
     /// Create a new order from a parsed receipt
-    func createOrderFromReceipt(_ receipt: ParsedReceipt) {
+    func createOrderFromReceipt(_ receipt: ParsedReceipt, image: UIImage? = nil) {
         // Create the main title from the main dish
         let title = receipt.mainDish
         
@@ -58,18 +87,29 @@ class HomeViewModel: ObservableObject {
         // Create side dishes array
         let sideDishes = receipt.sideDishes.map { $0.name }
         
+        // Convert image to data if provided
+        var imageData: Data? = nil
+        if let image = image, let jpegData = image.jpegData(compressionQuality: 0.7) {
+            imageData = jpegData
+        }
+        
         // Create a new order
         let newOrder = OrderItem(
             title: title,
             dateTime: dateTime,
             price: price,
+            receiptImage: imageData,
             sideDishes: sideDishes,
             verificationStatus: .pending
         )
         
-        // Add to the orders list
-        withAnimation {
-            orders.insert(newOrder, at: 0)
+        // Add to SwiftData
+        modelContext.insert(newOrder)
+        
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to save new order: \(error)")
         }
     }
     
@@ -169,12 +209,22 @@ class HomeViewModel: ObservableObject {
     func saveReceipt(at index: Int) {
         guard index < parsedReceipts.count else { return }
         
+        // Determine which image to save (scanned or selected)
+        let imageToSave: UIImage?
+        if !scannedImages.isEmpty && index < scannedImages.count {
+            imageToSave = scannedImages[index]
+        } else if !selectedImages.isEmpty && index < selectedImages.count {
+            imageToSave = selectedImages[index]
+        } else {
+            imageToSave = nil
+        }
+        
         if let orderToUpdate = orderBeingEdited {
             // Update the existing order with proof
-            updateOrderWithProof(orderToUpdate, with: parsedReceipts[index])
+            updateOrderWithProof(orderToUpdate, with: parsedReceipts[index], proofImage: imageToSave)
         } else {
             // Create a new order
-            createOrderFromReceipt(parsedReceipts[index])
+            createOrderFromReceipt(parsedReceipts[index], image: imageToSave)
         }
         
         // Reset orderBeingEdited
@@ -182,30 +232,29 @@ class HomeViewModel: ObservableObject {
     }
     
     /// Update an existing order with proof
-    private func updateOrderWithProof(_ order: OrderItem, with receipt: ParsedReceipt) {
-        // Find the order in the array
-        if let index = orders.firstIndex(where: { $0.id == order.id }) {
-            // Here you can decide what fields to update or validate
-            
-            // For example, if the receipt date and amount match, mark as verified
-            let dateMatches = compareDate(order.dateTime, with: receipt.dateTime)
-            let priceMatches = comparePrice(order.price, with: receipt.totalPrice)
-            
-            // Update the order
-            var updatedOrder = order
-            
-            // If the proof matches, mark as verified
-            if dateMatches && priceMatches {
-                updatedOrder.verificationStatus = .verified
-            } else {
-                // You might want to add more status types or handle mismatches differently
-                print("Proof mismatch. Date match: \(dateMatches), Price match: \(priceMatches)")
-            }
-            
-            // Update the order in the array
-            withAnimation {
-                orders[index] = updatedOrder
-            }
+    private func updateOrderWithProof(_ order: OrderItem, with receipt: ParsedReceipt, proofImage: UIImage?) {
+        // Convert proof image to data if provided
+        if let image = proofImage, let jpegData = image.jpegData(compressionQuality: 0.7) {
+            order.proofImage = jpegData
+        }
+        
+        // Check if the receipt date and amount match for verification
+        let dateMatches = compareDate(order.dateTime, with: receipt.dateTime)
+        let priceMatches = comparePrice(order.price, with: receipt.totalPrice)
+        
+        // If the proof matches, mark as verified
+        if dateMatches && priceMatches {
+            order.verificationStatus = .verified
+        } else {
+            // You might want to add more status types or handle mismatches differently
+            print("Proof mismatch. Date match: \(dateMatches), Price match: \(priceMatches)")
+        }
+        
+        // Save changes
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to update order with proof: \(error)")
         }
     }
     

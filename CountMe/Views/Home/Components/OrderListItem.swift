@@ -4,7 +4,7 @@ struct OrderListItem: View {
     let order: OrderItem
     let onDelete: () -> Void
     let onEdit: () -> Void
-    let onScanProof: () -> Void  // Add this parameter
+    let onScanProof: () -> Void
     
     let currencyFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -76,7 +76,6 @@ struct OrderListItem: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
-        .background(Color(UIColor.systemBackground))
         .swipeActions(edge: .leading) {
             Button {
                 onEdit()
@@ -103,4 +102,18 @@ struct OrderListItem: View {
             }
         }
     }
+}
+
+// Preview for SwiftData
+#Preview {
+    let container = AppSchema.previewContainer
+    let order = OrderItem.sampleOrders[0]
+    
+    return OrderListItem(
+        order: order,
+        onDelete: {},
+        onEdit: {},
+        onScanProof: {}
+    )
+    .modelContainer(container)
 }

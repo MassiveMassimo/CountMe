@@ -1,10 +1,12 @@
 import SwiftUI
+import SwiftData
 
 @main
-struct CountmeApp: App {
+struct CountMeApp: App {
     var body: some Scene {
         WindowGroup {
             HomePage()
         }
+        .modelContainer(AppSchema.container)
     }
 }

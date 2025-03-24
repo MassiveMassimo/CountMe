@@ -1,9 +1,13 @@
 import SwiftUI
 import PhotosUI
 import VisionKit
+import SwiftData
 
 struct HomePage: View {
-    @StateObject private var viewModel = HomeViewModel()
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \OrderItem.createdAt, order: .reverse) private var allOrders: [OrderItem]
+    
+    @StateObject private var viewModel: HomeViewModel
     
     // Local UI state
     @State private var showDeleteConfirmation = false
@@ -11,6 +15,25 @@ struct HomePage: View {
     @State private var showPhotoLibrary = false
     @State private var showDocumentScanner = false
     @State private var orderToDelete: OrderItem?
+    
+    init() {
+        // We'll initialize the viewModel in the initializer
+        // This ensures we're passing the modelContext directly from the environment
+        let viewModel = HomeViewModel(modelContext: ModelContext(AppSchema.container))
+        _viewModel = StateObject(wrappedValue: viewModel)
+    }
+    
+    // Computed properties for filtered orders
+    var filteredOrders: [OrderItem] {
+        switch viewModel.currentFilter {
+        case .all:
+            return allOrders
+        case .verified:
+            return allOrders.filter { $0.verificationStatus == .verified }
+        case .pending:
+            return allOrders.filter { $0.verificationStatus == .pending }
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -22,29 +45,32 @@ struct HomePage: View {
                         .listRowInsets(EdgeInsets())
                         .background(Material.bar)
                     ) {
-                        if viewModel.filteredOrders.isEmpty {
+                        if filteredOrders.isEmpty {
                             EmptyStateView {
                                 showAddReceiptOptions = true
                             }
                             .listRowBackground(Color.clear)
                         } else {
-                            ForEach(viewModel.filteredOrders) { order in
-                                OrderListItem(
-                                    order: order,
-                                    onDelete: {
-                                        orderToDelete = order
-                                        showDeleteConfirmation = true
-                                    },
-                                    onEdit: {
-                                        viewModel.editOrder(order)
-                                    },
-                                    onScanProof: {
-                                        // Store the current order being edited
-                                        viewModel.orderBeingEdited = order
-                                        // Show the document scanner options dialog instead of directly opening scanner
-                                        showAddReceiptOptions = true
-                                    }
-                                )
+                            ForEach(filteredOrders) { order in
+                                NavigationLink(destination: OrderDetailView(order: order)) {
+                                    OrderListItem(
+                                        order: order,
+                                        onDelete: {
+                                            orderToDelete = order
+                                            showDeleteConfirmation = true
+                                        },
+                                        onEdit: {
+                                            viewModel.editOrder(order)
+                                        },
+                                        onScanProof: {
+                                            // Store the current order being edited
+                                            viewModel.orderBeingEdited = order
+                                            // Show the document scanner options dialog instead of directly opening scanner
+                                            showAddReceiptOptions = true
+                                        }
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                             }
                         }
