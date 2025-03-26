@@ -7,20 +7,18 @@ struct HomePage: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \OrderItem.createdAt, order: .reverse) private var allOrders: [OrderItem]
     
-    @StateObject private var viewModel: HomeViewModel
+    @State private var viewModel = HomeViewModel(modelContext: ModelContext(AppSchema.container))
     
     // Local UI state
     @State private var showDeleteConfirmation = false
     @State private var showAddReceiptOptions = false
+    @State private var showAddProofOptions = false
     @State private var showPhotoLibrary = false
     @State private var showDocumentScanner = false
     @State private var orderToDelete: OrderItem?
     
     init() {
-        // We'll initialize the viewModel in the initializer
-        // This ensures we're passing the modelContext directly from the environment
-        let viewModel = HomeViewModel(modelContext: ModelContext(AppSchema.container))
-        _viewModel = StateObject(wrappedValue: viewModel)
+        _viewModel = State(initialValue: HomeViewModel(modelContext: ModelContext(AppSchema.container)))
     }
     
     // Computed properties for filtered orders
@@ -39,7 +37,6 @@ struct HomePage: View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 List {
-                    // Add the filter as a section header inside the List
                     Section(header:
                                 filterHeader
                         .listRowInsets(EdgeInsets())
@@ -50,6 +47,7 @@ struct HomePage: View {
                                 showAddReceiptOptions = true
                             }
                             .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         } else {
                             ForEach(filteredOrders) { order in
                                 NavigationLink(destination: OrderDetailView(order: order)) {
@@ -74,26 +72,20 @@ struct HomePage: View {
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                             }
                         }
-                        
-                        // Add space at bottom for the floating button
                         Color.clear
                             .frame(height: 70)
                             .listRowSeparator(.hidden)
                     }
                 }
                 .listStyle(.plain)
-                // This is crucial - it creates sticky headers when scrolling
                 .environment(\.defaultMinListHeaderHeight, 0)
-                
-                // Floating action button
                 addReceiptButton
             }
             .navigationTitle("CountMe")
             .navigationBarTitleDisplayMode(.large)
             .confirmationDialog(
                 "Delete Order",
-                isPresented: $showDeleteConfirmation,
-                titleVisibility: .visible
+                isPresented: $showDeleteConfirmation
             ) {
                 Button("Delete", role: .destructive) {
                     if let order = orderToDelete {

@@ -2,7 +2,8 @@ import SwiftUI
 import PhotosUI
 import SwiftData
 
-class HomeViewModel: ObservableObject {
+@Observable
+class HomeViewModel {
     // Services
     let ocrService = OCRService()
     private let receiptParserService = ReceiptParserService()
@@ -10,17 +11,17 @@ class HomeViewModel: ObservableObject {
     // SwiftData ModelContext
     private var modelContext: ModelContext
     
-    // Published state
-    @Published var currentFilter: OrderFilter = .all
-    @Published var selectedPhotoItems: [PhotosPickerItem] = []
-    @Published var scannedImages: [UIImage] = []
-    @Published var selectedImages: [UIImage] = [] // Images from photo library
-    @Published var recognizedTexts: [String] = []
-    @Published var parsedReceipts: [ParsedReceipt] = []
-    @Published var isProcessing = false
-    @Published var processingIndex = 0
-    @Published var showingOCRResults = false
-    @Published var orderBeingEdited: OrderItem? // Add this property
+    // State properties (no need for @Published)
+    var currentFilter: OrderFilter = .all
+    var selectedPhotoItems: [PhotosPickerItem] = []
+    var scannedImages: [UIImage] = []
+    var selectedImages: [UIImage] = []
+    var recognizedTexts: [String] = []
+    var parsedReceipts: [ParsedReceipt] = []
+    var isProcessing = false
+    var processingIndex = 0
+    var showingOCRResults = false
+    var orderBeingEdited: OrderItem?
     
     // Initialize with ModelContext
     init(modelContext: ModelContext) {
@@ -32,7 +33,7 @@ class HomeViewModel: ObservableObject {
         let descriptor = FetchDescriptor<OrderItem>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
         
         do {
-            var orders = try modelContext.fetch(descriptor)
+            let orders = try modelContext.fetch(descriptor)
             
             // Apply filter if needed
             switch filter {

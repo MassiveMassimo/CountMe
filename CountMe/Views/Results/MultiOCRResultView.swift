@@ -4,7 +4,7 @@ import SwiftData
 struct MultiOCRResultView: View {
     let images: [UIImage]
     let recognizedTexts: [String]
-    @ObservedObject var viewModel: HomeViewModel
+    @Bindable var viewModel: HomeViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
@@ -137,13 +137,13 @@ struct MultiOCRResultView: View {
             }
             .navigationTitle("Receipt Details")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
+//            .toolbar {
+//                ToolbarItem(placement: .primaryAction) {
+//                    Button("Done") {
+//                        dismiss()
+//                    }
+//                }
+//            }
             .overlay {
                 if showSaveConfirmation {
                     ZStack {
