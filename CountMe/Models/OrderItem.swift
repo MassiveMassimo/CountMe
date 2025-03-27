@@ -29,6 +29,7 @@ final class OrderItem {
         self.sideDishes = sideDishes
         self.verificationStatus = verificationStatus
         self.createdAt = Date()
+        
     }
     
     enum VerificationStatus: String, Codable {
@@ -53,6 +54,21 @@ final class OrderItem {
             }
         }
     }
+}
+
+
+final class PaymentDetail {
+    var bank: String
+    var paymentamount: Double
+    
+    init(
+        bank: String,
+        paymentamount: Double
+    ) {
+        self.bank = bank
+        self.paymentamount = paymentamount
+    }
+    
 }
 
 // Sample data for previews
