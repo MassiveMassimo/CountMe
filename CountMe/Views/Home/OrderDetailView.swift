@@ -5,6 +5,10 @@ struct OrderDetailView: View {
     @Bindable var order: OrderItem
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @State private var showAddProofOptions = false
+    @State private var showDocumentScanner = false
+    @State private var showPhotoLibrary = false
+    @State private var viewModel = HomeViewModel(modelContext: ModelContext(AppSchema.container))
     
     let currencyFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -137,8 +141,8 @@ struct OrderDetailView: View {
                         
                         if order.verificationStatus == .pending {
                             Button {
-                                // Scan verification proof
-                                dismiss()
+                                showAddProofOptions = true
+//                                dismiss()
                             } label: {
                                 Label("Scan Proof", systemImage: "doc.text.viewfinder")
                             }
@@ -160,10 +164,83 @@ struct OrderDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     // Edit order functionality
+                    
                 } label: {
                     Text("Edit")
                 }
             }
+        }
+        .confirmationDialog(
+            "Proof input method",
+            isPresented: $showAddProofOptions
+        ) {
+            Button("Take a photo") {
+                showAddProofOptions = false
+                showDocumentScanner = true
+                
+            }
+            Button("Choose from gallery") {
+                showAddProofOptions = false
+                showPhotoLibrary = true
+            }
+            Button("Cancel", role: .cancel) {
+                // Reset orderBeingEdited if user cancels
+                viewModel.orderBeingEdited = nil
+            }
+        } message: {
+            Text("Select proof method")
+        }
+        .photosPicker(
+            isPresented: $showPhotoLibrary,
+            selection: $viewModel.selectedPhotoItems,
+            maxSelectionCount: 10,
+            matching: .images,
+            photoLibrary: .shared()
+        )
+        .onChange(of: viewModel.selectedPhotoItems) { oldItems, newItems in
+            guard !newItems.isEmpty else { return }
+            Task {
+                await viewModel.processSelectedPhotos()
+            }
+        }
+        .fullScreenCover(isPresented: $showDocumentScanner) {
+            DocumentScannerView(
+                scannedImages: $viewModel.scannedImages,
+                ocrService: viewModel.ocrService
+            )
+            .ignoresSafeArea()
+            .onDisappear {
+                if !viewModel.scannedImages.isEmpty {
+                    Task {
+                        await viewModel.processScannedDocuments()
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $viewModel.showingOCRResults, onDismiss: {
+            viewModel.resetImageSelection()
+        }) {
+            MultiOCRResultView(
+                images: !viewModel.scannedImages.isEmpty ? viewModel.scannedImages : viewModel.selectedImages,
+                recognizedTexts: viewModel.recognizedTexts,
+                viewModel: viewModel
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .onChange(of: showPhotoLibrary) { oldValue, newValue in
+            if newValue == true {
+                viewModel.selectedPhotoItems = []
+            }
+        }
+        .overlay {
+            ProcessingOverlay(
+                isVisible: viewModel.isProcessing,
+                currentIndex: viewModel.processingIndex,
+                totalCount: !viewModel.scannedImages.isEmpty
+                ? viewModel.scannedImages.count
+                : viewModel.selectedPhotoItems.count
+            )
         }
     }
 }

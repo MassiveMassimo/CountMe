@@ -29,9 +29,22 @@
 		B13296002D8A92A800F6345C /* CountMeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CountMeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		66E64DC42D953CB500A75FB5 /* Exceptions for "CountMe" folder in "CountMe" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B13295E52D8A92A600F6345C /* CountMe */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B13295E82D8A92A600F6345C /* CountMe */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				66E64DC42D953CB500A75FB5 /* Exceptions for "CountMe" folder in "CountMe" target */,
+			);
 			path = CountMe;
 			sourceTree = "<group>";
 		};
@@ -396,9 +409,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"CountMe/Preview Content\"";
-				DEVELOPMENT_TEAM = 6SLG9DB9N5;
+				DEVELOPMENT_TEAM = 8AM76272N5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CountMe/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSCameraUsageDescription = "   CountMe needs camera access to scan and process receipts and documents.\n    <string>CountMe needs camera access to scan and process receipts and documents.</string>\nCountMe needs camera access to scan and process receipts and documents.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -425,9 +441,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"CountMe/Preview Content\"";
-				DEVELOPMENT_TEAM = 6SLG9DB9N5;
+				DEVELOPMENT_TEAM = 8AM76272N5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CountMe/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSCameraUsageDescription = "   CountMe needs camera access to scan and process receipts and documents.\n    <string>CountMe needs camera access to scan and process receipts and documents.</string>\nCountMe needs camera access to scan and process receipts and documents.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
