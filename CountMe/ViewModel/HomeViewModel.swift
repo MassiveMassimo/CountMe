@@ -28,6 +28,11 @@ class HomeViewModel {
         self.modelContext = modelContext
     }
     
+    func updateModelContext(_ newContext: ModelContext) {
+        // Store the provided model context
+        self.modelContext = newContext
+    }
+    
     // Function to fetch orders with optional sorting and filtering
     func fetchOrders(filter: OrderFilter = .all) -> [OrderItem] {
         let descriptor = FetchDescriptor<OrderItem>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
@@ -49,6 +54,7 @@ class HomeViewModel {
             return []
         }
     }
+    
     
     // MARK: - Order Management
     
