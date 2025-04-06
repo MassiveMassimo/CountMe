@@ -1,15 +1,169 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Helper Components
+struct OrderHeaderView: View {
+    let order: OrderItem
+    
+    var body: some View {
+        HStack {
+            Text(order.title)
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            Spacer()
+            
+            StatusBadge(status: order.verificationStatus)
+        }
+        .padding(.bottom, 5)
+    }
+}
+
+struct OrderDatePriceView: View {
+    let order: OrderItem
+    let currencyFormatter: NumberFormatter
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label {
+                    Text(order.dateTime, style: .date)
+                } icon: {
+                    Image(systemName: "calendar")
+                }
+                .foregroundStyle(.secondary)
+                
+                Spacer()
+                
+                Label {
+                    Text(order.dateTime, style: .time)
+                } icon: {
+                    Image(systemName: "calendar")
+                }
+                .foregroundStyle(.secondary)
+            }
+            
+            // Price
+            HStack {
+                Text("Total Amount")
+                    .fontWeight(.medium)
+                
+                Spacer()
+                
+                Text(currencyFormatter.string(from: NSNumber(value: order.price)) ?? "Rp0")
+                    .font(.headline)
+            }
+            .padding(.top, 5)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 15)
+        .background(Color(UIColor.systemGray6))
+        .cornerRadius(12)
+    }
+}
+
+struct SideDishesView: View {
+    let sideDishes: [String]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Side Dishes")
+                .font(.headline)
+                .padding(.bottom, 2)
+            
+            if sideDishes.isEmpty {
+                Text("No side dishes")
+                    .foregroundStyle(.secondary)
+                    .italic()
+            } else {
+                ForEach(sideDishes, id: \.self) { dish in
+                    HStack {
+                        Image(systemName: "circle.fill")
+                            .font(.system(size: 6))
+                            .foregroundStyle(.secondary)
+                        
+                        Text(dish)
+                    }
+                }
+            }
+        }
+        .padding(.top, 5)
+    }
+}
+
+struct ImageDisplayView: View {
+    let title: String
+    let imageData: Data?
+    
+    var body: some View {
+        if let imageData = imageData,
+           let uiImage = UIImage(data: imageData) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.headline)
+                
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+                    .cornerRadius(12)
+            }
+            .padding(.top, 10)
+        } else {
+            EmptyView()
+        }
+    }
+}
+
+struct VerificationStatusView: View {
+    let status: OrderItem.VerificationStatus
+    let showAddProof: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Verification Status")
+                .font(.headline)
+            
+            HStack {
+                Image(systemName: status.iconName)
+                    .foregroundStyle(status.color)
+                
+                Text(status.rawValue)
+                    .foregroundStyle(status.color)
+                
+                Spacer()
+                
+                if status == .pending {
+                    Button {
+                        showAddProof()
+                    } label: {
+                        Label("Scan Proof", systemImage: "doc.text.viewfinder")
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.orange)
+                }
+            }
+            .padding(10)
+            .background(Color(UIColor.systemGray6))
+            .cornerRadius(8)
+        }
+        .padding(.top, 10)
+    }
+}
+
+// MARK: - Main View
 struct OrderDetailView: View {
     @Bindable var order: OrderItem
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    
+    // State variables
     @State private var showAddProofOptions = false
     @State private var showDocumentScanner = false
     @State private var showPhotoLibrary = false
-    @State private var viewModel = HomeViewModel(modelContext: ModelContext(AppSchema.container))
+    @State private var viewModel: HomeViewModel
     
+    // Formatters
     let currencyFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -17,144 +171,25 @@ struct OrderDetailView: View {
         return formatter
     }()
     
+    // Initialize with a new ModelContext to avoid compiler issues
+    init(order: OrderItem) {
+        self.order = order
+        self._viewModel = State(initialValue: HomeViewModel(modelContext: ModelContext(AppSchema.container)))
+    }
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Order title and status
-                HStack {
-                    Text(order.title)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Spacer()
-                    
-                    StatusBadge(status: order.verificationStatus)
-                }
-                .padding(.bottom, 5)
+                // Extract components to reduce complexity
+                OrderHeaderView(order: order)
+                OrderDatePriceView(order: order, currencyFormatter: currencyFormatter)
+                SideDishesView(sideDishes: order.sideDishes)
+                ImageDisplayView(title: "Receipt Image", imageData: order.receiptImage)
+                ImageDisplayView(title: "Verification Proof", imageData: order.proofImage)
                 
-                // Date and price information
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Label {
-                            Text(order.dateTime, style: .date)
-                        } icon: {
-                            Image(systemName: "calendar")
-                        }
-                        .foregroundStyle(.secondary)
-                        
-                        Spacer()
-                        
-                        Label {
-                            Text(order.dateTime, style: .time)
-                        } icon: {
-                            Image(systemName: "clock")
-                        }
-                        .foregroundStyle(.secondary)
-                    }
-                    
-                    // Price
-                    HStack {
-                        Text("Total Amount")
-                            .fontWeight(.medium)
-                        
-                        Spacer()
-                        
-                        Text(currencyFormatter.string(from: NSNumber(value: order.price)) ?? "Rp0")
-                            .font(.headline)
-                    }
-                    .padding(.top, 5)
+                VerificationStatusView(status: order.verificationStatus) {
+                    showAddProofOptions = true
                 }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 15)
-                .background(Color(UIColor.systemGray6))
-                .cornerRadius(12)
-                
-                // Side dishes
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Side Dishes")
-                        .font(.headline)
-                        .padding(.bottom, 2)
-                    
-                    if order.sideDishes.isEmpty {
-                        Text("No side dishes")
-                            .foregroundStyle(.secondary)
-                            .italic()
-                    } else {
-                        ForEach(order.sideDishes, id: \.self) { dish in
-                            HStack {
-                                Image(systemName: "circle.fill")
-                                    .font(.system(size: 6))
-                                    .foregroundStyle(.secondary)
-                                
-                                Text(dish)
-                            }
-                        }
-                    }
-                }
-                .padding(.top, 5)
-                
-                // Receipt Image
-                if let receiptImageData = order.receiptImage,
-                   let uiImage = UIImage(data: receiptImageData) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Receipt Image")
-                            .font(.headline)
-                        
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: .infinity)
-                            .cornerRadius(12)
-                    }
-                    .padding(.top, 10)
-                }
-                
-                // Proof Image
-                if let proofImageData = order.proofImage,
-                   let uiImage = UIImage(data: proofImageData) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Verification Proof")
-                            .font(.headline)
-                        
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: .infinity)
-                            .cornerRadius(12)
-                    }
-                    .padding(.top, 10)
-                }
-                
-                // Verification Info
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Verification Status")
-                        .font(.headline)
-                    
-                    HStack {
-                        Image(systemName: order.verificationStatus.iconName)
-                            .foregroundStyle(order.verificationStatus.color)
-                        
-                        Text(order.verificationStatus.rawValue)
-                            .foregroundStyle(order.verificationStatus.color)
-                        
-                        Spacer()
-                        
-                        if order.verificationStatus == .pending {
-                            Button {
-                                showAddProofOptions = true
-//                                dismiss()
-                            } label: {
-                                Label("Scan Proof", systemImage: "doc.text.viewfinder")
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.orange)
-                        }
-                    }
-                    .padding(10)
-                    .background(Color(UIColor.systemGray6))
-                    .cornerRadius(8)
-                }
-                .padding(.top, 10)
             }
             .padding()
         }
@@ -164,7 +199,6 @@ struct OrderDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     // Edit order functionality
-                    
                 } label: {
                     Text("Edit")
                 }
@@ -177,19 +211,18 @@ struct OrderDetailView: View {
             Button("Take a photo") {
                 showAddProofOptions = false
                 showDocumentScanner = true
-                
             }
             Button("Choose from gallery") {
                 showAddProofOptions = false
                 showPhotoLibrary = true
             }
             Button("Cancel", role: .cancel) {
-                // Reset orderBeingEdited if user cancels
                 viewModel.orderBeingEdited = nil
             }
         } message: {
             Text("Select proof method")
         }
+        // Apply modifiers to handle photo selection
         .photosPicker(
             isPresented: $showPhotoLibrary,
             selection: $viewModel.selectedPhotoItems,
@@ -197,12 +230,14 @@ struct OrderDetailView: View {
             matching: .images,
             photoLibrary: .shared()
         )
-        .onChange(of: viewModel.selectedPhotoItems) { oldItems, newItems in
+        // Process selected photos
+        .onChange(of: viewModel.selectedPhotoItems) { _, newItems in
             guard !newItems.isEmpty else { return }
             Task {
                 await viewModel.processSelectedPhotos()
             }
         }
+        // Document scanner
         .fullScreenCover(isPresented: $showDocumentScanner) {
             DocumentScannerView(
                 scannedImages: $viewModel.scannedImages,
@@ -217,10 +252,11 @@ struct OrderDetailView: View {
                 }
             }
         }
+        // OCR results sheet
         .sheet(isPresented: $viewModel.showingOCRResults, onDismiss: {
             viewModel.resetImageSelection()
         }) {
-            MultiOCRResultView(
+            SegmentedResultView(
                 images: !viewModel.scannedImages.isEmpty ? viewModel.scannedImages : viewModel.selectedImages,
                 recognizedTexts: viewModel.recognizedTexts,
                 viewModel: viewModel
@@ -228,11 +264,13 @@ struct OrderDetailView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
-        .onChange(of: showPhotoLibrary) { oldValue, newValue in
+        // Reset photo selection
+        .onChange(of: showPhotoLibrary) { _, newValue in
             if newValue == true {
                 viewModel.selectedPhotoItems = []
             }
         }
+        // Processing overlay
         .overlay {
             ProcessingOverlay(
                 isVisible: viewModel.isProcessing,
@@ -245,26 +283,26 @@ struct OrderDetailView: View {
     }
 }
 
-// Preview for SwiftData
-#Preview {
-    do {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: OrderItem.self, configurations: config)
-        
-        // Create a sample OrderItem
-        let order = OrderItem(
-            title: "Daging Lada Hitam",
-            dateTime: Date(),
-            price: 45000,
-            sideDishes: ["Nasi Putih 1 Porsi", "Es Teh Manis"],
-            verificationStatus: .verified
-        )
-        
-        return NavigationStack {
-            OrderDetailView(order: order)
-        }
-        .modelContainer(container)
-    } catch {
-        return Text("Failed to create preview: \(error.localizedDescription)")
-    }
-}
+// Preview for SwiftData - commented out to reduce complexity
+//#Preview {
+//    do {
+//        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+//        let container = try ModelContainer(for: OrderItem.self, configurations: config)
+//
+//        // Create a sample OrderItem
+//        let order = OrderItem(
+//            title: "Daging Lada Hitam",
+//            dateTime: Date(),
+//            price: 45000,
+//            sideDishes: ["Nasi Putih 1 Porsi", "Es Teh Manis"],
+//            verificationStatus: .verified
+//        )
+//
+//        return NavigationStack {
+//            OrderDetailView(order: order)
+//        }
+//        .modelContainer(container)
+//    } catch {
+//        return Text("Failed to create preview: \(error.localizedDescription)")
+//    }
+//}
