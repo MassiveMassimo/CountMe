@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-struct MultiOCRResultView: View {
+struct SegmentedResultView: View {
     let images: [UIImage]
     let recognizedTexts: [String]
     @Bindable var viewModel: HomeViewModel
@@ -26,7 +26,7 @@ struct MultiOCRResultView: View {
                     if images.count > 1 {
                         Picker("Select Receipt", selection: $selectedTab) {
                             ForEach(0..<images.count, id: \.self) { index in
-                                Text("Receipt \(index + 1)").tag(index)
+                                Text("\(index + 1)").tag(index)
                             }
                         }
                         .pickerStyle(.segmented)

@@ -1,10 +1,13 @@
+import SwiftData
 import SwiftUI
 
 struct OrderListItem: View {
     let order: OrderItem
-    let onDelete: () -> Void
     let onEdit: () -> Void
     let onScanProof: () -> Void
+
+    @State private var showConfirmationDialog: Bool = false
+    @Environment(\.modelContext) private var modelContext  // Inject SwiftData context
     
     let currencyFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -12,54 +15,47 @@ struct OrderListItem: View {
         formatter.locale = Locale(identifier: "id_ID")
         return formatter
     }()
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Header with title and status
             HStack {
                 Text(order.title)
                     .font(.headline)
                     .foregroundStyle(Color.primary)
                 
                 Spacer()
-                
                 StatusBadge(status: order.verificationStatus)
             }
-            
-            // Date and price
+
             HStack {
                 HStack(spacing: 4) {
                     Image(systemName: "calendar")
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
-                    
                     Text(order.dateTime, style: .date)
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                 }
-                
-                Spacer()
-                .frame(width: 16)
-                
+
+                Spacer().frame(width: 16)
+
                 HStack(spacing: 4) {
                     Image(systemName: "clock")
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
-                    
                     Text(order.dateTime, style: .time)
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 Text(currencyFormatter.string(from: NSNumber(value: order.price)) ?? "Rp0")
                     .font(.callout)
                     .fontWeight(.semibold)
                     .foregroundStyle(Color.primary)
             }
-            
-            // Side dishes chips
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(order.sideDishes, id: \.self) { dish in
@@ -76,6 +72,7 @@ struct OrderListItem: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
+        .background(Color(UIColor.systemBackground))
         .swipeActions(edge: .leading) {
             Button {
                 onEdit()
@@ -83,8 +80,7 @@ struct OrderListItem: View {
                 Label("Edit", systemImage: "pencil")
             }
             .tint(.blue)
-            
-            // Only show scan proof button for pending items
+
             if order.verificationStatus == .pending {
                 Button {
                     onScanProof()
@@ -95,25 +91,52 @@ struct OrderListItem: View {
             }
         }
         .swipeActions(edge: .trailing) {
+            // When using swipeActions, use a simple action that sets the state
             Button(role: .destructive) {
-                onDelete()
+                // The dialog will be shown via .confirmationDialog modifier
+                showConfirmationDialog.toggle()
             } label: {
                 Label("Delete", systemImage: "trash")
+            }
+        }
+        // This confirmation dialog is tied to the whole cell
+        .confirmationDialog(
+            "Delete Order",
+            isPresented: $showConfirmationDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                deleteOrder()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Are you sure you want to delete this order?")
+        }
+    }
+
+    private func deleteOrder() {
+        withAnimation {
+            modelContext.delete(order)
+            do {
+                try modelContext.save()
+                print("Order deleted successfully")
+            } catch {
+                print("Failed to delete order: \(error)")
             }
         }
     }
 }
 
-// Preview for SwiftData
 #Preview {
     let container = AppSchema.previewContainer
     let order = OrderItem.sampleOrders[0]
-    
-    return OrderListItem(
-        order: order,
-        onDelete: {},
-        onEdit: {},
-        onScanProof: {}
-    )
+
+    return List {
+        OrderListItem(
+            order: order,
+            onEdit: {},
+            onScanProof: {}
+        )
+    }
     .modelContainer(container)
 }
