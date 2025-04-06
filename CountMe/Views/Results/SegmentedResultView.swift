@@ -192,9 +192,6 @@ struct SegmentedResultView: View {
     }
 }
 
-import SwiftUI
-import SwiftData
-
 #Preview("Single Image") {
     // Create a model container
     let container = try! ModelContainer(for: OrderItem.self)
