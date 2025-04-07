@@ -1,9 +1,9 @@
 import Vision
 import UIKit
 
-class OCRService {
+final class OCRService {
     /// Process an image with OCR and return the recognized text in left-to-right, top-to-bottom order
-    func recognizeText(from image: UIImage) async -> String {
+    private func recognizeText(from image: UIImage) async -> String {
         guard let cgImage = image.cgImage else { return "" }
         
         return await withCheckedContinuation { continuation in
@@ -106,7 +106,7 @@ class OCRService {
     
     /// Process multiple images with OCR and report progress
     func batchRecognizeText(from images: [UIImage],
-                           progressHandler: @escaping (Int, Int) -> Void) async -> [String] {
+                            progressHandler: @escaping (Int, Int) -> Void) async -> [String] {
         var results: [String] = []
         
         for (index, image) in images.enumerated() {

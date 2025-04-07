@@ -1,6 +1,7 @@
 import Foundation
 
 struct ParsedReceipt {
+    //change data types to optional
     var restaurantName: String = ""
     var orderNumber: String = ""
     var dateTime: Date?
@@ -480,3 +481,5 @@ class ReceiptParserService {
         return Double(normalizedString)
     }
 }
+
+// add private extention
