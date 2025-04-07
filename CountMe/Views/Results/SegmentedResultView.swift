@@ -14,6 +14,7 @@ struct SegmentedResultView: View {
     @State private var showRetakeOptions = false
     
     var body: some View {
+        
         NavigationStack {
             VStack {
                 if images.isEmpty {
@@ -190,3 +191,4 @@ struct SegmentedResultView: View {
         }
     }
 }
+

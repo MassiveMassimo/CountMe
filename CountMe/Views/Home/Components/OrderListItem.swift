@@ -3,9 +3,8 @@ import SwiftUI
 
 struct OrderListItem: View {
     let order: OrderItem
-    let onEdit: () -> Void
-    let onScanProof: () -> Void
-
+    @State private var showEditView = false
+    @State private var showScanProofView = false
     @State private var showConfirmationDialog: Bool = false
     @Environment(\.modelContext) private var modelContext  // Inject SwiftData context
     
@@ -75,7 +74,7 @@ struct OrderListItem: View {
         .background(Color(UIColor.systemBackground))
         .swipeActions(edge: .leading) {
             Button {
-                onEdit()
+                showEditView = true
             } label: {
                 Label("Edit", systemImage: "pencil")
             }
@@ -83,7 +82,7 @@ struct OrderListItem: View {
 
             if order.verificationStatus == .pending {
                 Button {
-                    onScanProof()
+                    showScanProofView = true
                 } label: {
                     Label("Scan Proof", systemImage: "doc.text.viewfinder")
                 }
@@ -112,6 +111,46 @@ struct OrderListItem: View {
         } message: {
             Text("Are you sure you want to delete this order?")
         }
+        // Add sheet for EditVerifiedView
+        .sheet(isPresented: $showEditView) {
+            // On dismiss callback if needed
+        } content: {
+            // Get images from order data if available
+            let receiptUIImage = order.receiptImage != nil ?
+                UIImage(data: order.receiptImage!) ?? UIImage(systemName: "doc.text")! :
+                UIImage(systemName: "doc.text")!
+            
+            let proofUIImage = order.proofImage != nil ?
+                UIImage(data: order.proofImage!) ?? UIImage(systemName: "photo")! :
+                UIImage(systemName: "photo")!
+            
+            EditVerifiedView(
+                order: order,
+                receiptImage: receiptUIImage,
+                onSave: { updatedOrder in
+                    // SwiftData will automatically track changes to the order
+                    // Additional logic if needed after saving
+                },
+                paymentProofImage: proofUIImage
+            )
+        }
+        // Sheet for scan proof functionality (assuming it connects to HomeViewModel)
+        .sheet(isPresented: $showScanProofView) {
+            // This would be your scan proof implementation
+            // For now, just a placeholder that informs the user
+            VStack {
+                Text("Scan Proof")
+                    .font(.title)
+                Text("This would launch your document scanner.")
+                    .padding()
+                Button("Close") {
+                    showScanProofView = false
+                }
+                .buttonStyle(.borderedProminent)
+                .padding()
+            }
+            .padding()
+        }
     }
 
     private func deleteOrder() {
@@ -132,11 +171,7 @@ struct OrderListItem: View {
     let order = OrderItem.sampleOrders[0]
 
     return List {
-        OrderListItem(
-            order: order,
-            onEdit: {},
-            onScanProof: {}
-        )
+        OrderListItem(order: order)
     }
     .modelContainer(container)
 }
