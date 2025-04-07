@@ -38,7 +38,7 @@ struct OrderDatePriceView: View {
                 Label {
                     Text(order.dateTime, style: .time)
                 } icon: {
-                    Image(systemName: "calendar")
+                    Image(systemName: "clock")
                 }
                 .foregroundStyle(.secondary)
             }
@@ -162,6 +162,7 @@ struct OrderDetailView: View {
     @State private var showDocumentScanner = false
     @State private var showPhotoLibrary = false
     @State private var viewModel: HomeViewModel
+    @State private var showEditView = false
     
     // Formatters
     let currencyFormatter: NumberFormatter = {
@@ -198,11 +199,29 @@ struct OrderDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    // Edit order functionality
+                    showEditView = true
                 } label: {
                     Text("Edit")
+                        .font(.headline)
                 }
             }
+        }
+        .sheet(isPresented: $showEditView) {
+            // When the sheet is dismissed, we could refresh data if needed
+        } content: {
+            // Get images from order data if available
+            let receiptUIImage = order.receiptImage != nil ? UIImage(data: order.receiptImage!) ?? UIImage(systemName: "doc.text")! : UIImage(systemName: "doc.text")!
+            let proofUIImage = order.proofImage != nil ? UIImage(data: order.proofImage!) ?? UIImage(systemName: "photo")! : UIImage(systemName: "photo")!
+            
+            EditVerifiedView(
+                order: order,
+                receiptImage: receiptUIImage,
+                onSave: { updatedOrder in
+                    // SwiftData will automatically track changes to the order
+                    // Additional logic if needed after saving
+                },
+                paymentProofImage: proofUIImage
+            )
         }
         .confirmationDialog(
             "Proof input method",
@@ -283,26 +302,26 @@ struct OrderDetailView: View {
     }
 }
 
-// Preview for SwiftData - commented out to reduce complexity
-//#Preview {
-//    do {
-//        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-//        let container = try ModelContainer(for: OrderItem.self, configurations: config)
-//
-//        // Create a sample OrderItem
-//        let order = OrderItem(
-//            title: "Daging Lada Hitam",
-//            dateTime: Date(),
-//            price: 45000,
-//            sideDishes: ["Nasi Putih 1 Porsi", "Es Teh Manis"],
-//            verificationStatus: .verified
-//        )
-//
-//        return NavigationStack {
-//            OrderDetailView(order: order)
-//        }
-//        .modelContainer(container)
-//    } catch {
-//        return Text("Failed to create preview: \(error.localizedDescription)")
-//    }
-//}
+// Preview for SwiftData
+#Preview {
+    do {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: OrderItem.self, configurations: config)
+        
+        // Create a sample OrderItem
+        let order = OrderItem(
+            title: "Daging Lada Hitam",
+            dateTime: Date(),
+            price: 45000,
+            sideDishes: ["Nasi Putih 1 Porsi", "Es Teh Manis"],
+            verificationStatus: .verified
+        )
+        
+        return NavigationStack {
+            OrderDetailView(order: order)
+        }
+        .modelContainer(container)
+    } catch {
+        return Text("Failed to create preview: \(error.localizedDescription)")
+    }
+}

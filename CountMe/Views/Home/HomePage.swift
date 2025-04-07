@@ -107,23 +107,12 @@ struct HomePage: View {
     
     private var ordersListContent: some View {
         ForEach(filteredOrders) { order in
-            OrderListItem(
-                order: order,
-                onEdit: {
-                    viewModel.editOrder(order)
-                },
-                onScanProof: {
-                    // Store the current order being edited
-                    viewModel.orderBeingEdited = order
-                    // Show the document scanner options dialog
-                    showAddReceiptOptions = true
+            OrderListItem(order: order)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    selectedOrder = order
                 }
-            )
-            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-            .contentShape(Rectangle())
-            .onTapGesture {
-                selectedOrder = order
-            }
         }
     }
     
