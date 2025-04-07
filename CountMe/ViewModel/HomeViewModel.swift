@@ -7,6 +7,7 @@ class HomeViewModel {
     // Services
     let ocrService = OCRService()
     private let receiptParserService = ReceiptParserService()
+    private let proofParserService = ProofParserService()
     
     // SwiftData ModelContext
     private var modelContext: ModelContext
@@ -18,6 +19,7 @@ class HomeViewModel {
     var selectedImages: [UIImage] = []
     var recognizedTexts: [String] = []
     var parsedReceipts: [ParsedReceipt] = []
+    var parsedProofs: [ParsedProof] = []
     var isProcessing = false
     var processingIndex = 0
     var showingOCRResults = false
@@ -130,6 +132,7 @@ class HomeViewModel {
         selectedImages = []
         recognizedTexts = []
         parsedReceipts = []
+        parsedProofs = []
         processingIndex = 0
         
         await MainActor.run {
@@ -155,17 +158,34 @@ class HomeViewModel {
             }
         }
         
-        // Parse the recognized texts
-        let receipts = texts.map { receiptParserService.parseReceipt(from: $0) }
-        
-        await MainActor.run {
-            recognizedTexts = texts
-            parsedReceipts = receipts
-            isProcessing = false
+        // Parse the recognized texts based on whether we're processing a proof or receipt
+        if orderBeingEdited != nil {
+            // We're processing a proof
+            let proofs = texts.map { proofParserService.parseProof(from: $0) }
             
-            // Only show results if we have images
-            if !selectedImages.isEmpty {
-                showingOCRResults = true
+            await MainActor.run {
+                recognizedTexts = texts
+                parsedProofs = proofs
+                isProcessing = false
+                
+                // Only show results if we have images
+                if !selectedImages.isEmpty {
+                    showingOCRResults = true
+                }
+            }
+        } else {
+            // We're processing a receipt
+            let receipts = texts.map { receiptParserService.parseReceipt(from: $0) }
+            
+            await MainActor.run {
+                recognizedTexts = texts
+                parsedReceipts = receipts
+                isProcessing = false
+                
+                // Only show results if we have images
+                if !selectedImages.isEmpty {
+                    showingOCRResults = true
+                }
             }
         }
     }
@@ -178,6 +198,7 @@ class HomeViewModel {
             isProcessing = true
             recognizedTexts = []
             parsedReceipts = []
+            parsedProofs = []
             processingIndex = 0
         }
         
@@ -188,16 +209,31 @@ class HomeViewModel {
             }
         }
         
-        // Parse the recognized texts
-        let receipts = texts.map { receiptParserService.parseReceipt(from: $0) }
-        
-        await MainActor.run {
-            recognizedTexts = texts
-            parsedReceipts = receipts
-            isProcessing = false
+        // Parse the recognized texts based on whether we're processing a proof or receipt
+        if orderBeingEdited != nil {
+            // We're processing a proof
+            let proofs = texts.map { proofParserService.parseProof(from: $0) }
             
-            // Show results
-            showingOCRResults = true
+            await MainActor.run {
+                recognizedTexts = texts
+                parsedProofs = proofs
+                isProcessing = false
+                
+                // Show results
+                showingOCRResults = true
+            }
+        } else {
+            // We're processing a receipt
+            let receipts = texts.map { receiptParserService.parseReceipt(from: $0) }
+            
+            await MainActor.run {
+                recognizedTexts = texts
+                parsedReceipts = receipts
+                isProcessing = false
+                
+                // Show results
+                showingOCRResults = true
+            }
         }
     }
     
@@ -208,14 +244,13 @@ class HomeViewModel {
         scannedImages = []
         recognizedTexts = []
         parsedReceipts = []
+        parsedProofs = []
         isProcessing = false
         orderBeingEdited = nil  // Reset the order being edited
     }
     
-    /// Save a parsed receipt to create a new order or update existing order
+    /// Save a parsed receipt or proof to create a new order or update existing order
     func saveReceipt(at index: Int) {
-        guard index < parsedReceipts.count else { return }
-        
         // Determine which image to save (scanned or selected)
         let imageToSave: UIImage?
         if !scannedImages.isEmpty && index < scannedImages.count {
@@ -227,9 +262,15 @@ class HomeViewModel {
         }
         
         if let orderToUpdate = orderBeingEdited {
+            // Ensure index is valid for parsed proofs
+            guard index < parsedProofs.count else { return }
+            
             // Update the existing order with proof
-            updateOrderWithProof(orderToUpdate, with: parsedReceipts[index], proofImage: imageToSave)
+            updateOrderWithProof(orderToUpdate, with: parsedProofs[index], proofImage: imageToSave)
         } else {
+            // Ensure index is valid for parsed receipts
+            guard index < parsedReceipts.count else { return }
+            
             // Create a new order
             createOrderFromReceipt(parsedReceipts[index], image: imageToSave)
         }
@@ -239,22 +280,21 @@ class HomeViewModel {
     }
     
     /// Update an existing order with proof
-    private func updateOrderWithProof(_ order: OrderItem, with receipt: ParsedReceipt, proofImage: UIImage?) {
+    private func updateOrderWithProof(_ order: OrderItem, with proof: ParsedProof, proofImage: UIImage?) {
         // Convert proof image to data if provided
         if let image = proofImage, let jpegData = image.jpegData(compressionQuality: 0.7) {
             order.proofImage = jpegData
         }
         
-        // Check if the receipt date and amount match for verification
-        let dateMatches = compareDate(order.dateTime, with: receipt.dateTime)
-        let priceMatches = comparePrice(order.price, with: receipt.totalPrice)
+        // Only check if the price matches for verification
+        let priceMatches = comparePrice(order.price, with: proof.totalPayment)
         
-        // If the proof matches, mark as verified
-        if dateMatches && priceMatches {
+        // If the price matches, mark as verified, otherwise mark as mismatch
+        if priceMatches {
             order.verificationStatus = .verified
         } else {
-            // You might want to add more status types or handle mismatches differently
-            print("Proof mismatch. Date match: \(dateMatches), Price match: \(priceMatches)")
+            order.verificationStatus = .mismatch
+            print("Proof mismatch. Price match: \(priceMatches), Order price: \(order.price), Proof price: \(proof.totalPayment)")
         }
         
         // Save changes

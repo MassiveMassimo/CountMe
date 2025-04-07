@@ -189,6 +189,7 @@ struct OrderDetailView: View {
                 ImageDisplayView(title: "Verification Proof", imageData: order.proofImage)
                 
                 VerificationStatusView(status: order.verificationStatus) {
+                    viewModel.orderBeingEdited = order // Set order being edited when showing proof options
                     showAddProofOptions = true
                 }
             }

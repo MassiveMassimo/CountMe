@@ -35,16 +35,37 @@ struct SegmentedResultView: View {
                     }
                     
                     // Main content
-                    if !viewModel.parsedReceipts.isEmpty && selectedTab < viewModel.parsedReceipts.count {
+                    if viewModel.orderBeingEdited != nil && !viewModel.parsedProofs.isEmpty && selectedTab < viewModel.parsedProofs.count {
+                        // Display proof details when we're in proof verification mode
+                        ProofDetailView(
+                            parsedProof: viewModel.parsedProofs[selectedTab],
+                            proofImage: images[selectedTab],
+                            onSave: { updatedProof in
+                                // Update the parsed proof in the view model
+                                viewModel.parsedProofs[selectedTab] = updatedProof
+                                
+                                // Save the proof and update order
+                                viewModel.saveReceipt(at: selectedTab)
+                                
+                                // Show confirmation and dismiss after delay
+                                showSaveConfirmation = true
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                    dismiss()
+                                }
+                            },
+                            onRetake: {
+                                retakePhotoIndex = selectedTab
+                                showRetakeOptions = true
+                            }
+                        )
+                    } else if !viewModel.parsedReceipts.isEmpty && selectedTab < viewModel.parsedReceipts.count {
+                        // Display receipt details when we're adding a new receipt
                         ReceiptDetailView(
                             parsedReceipt: viewModel.parsedReceipts[selectedTab],
                             receiptImage: images[selectedTab],
                             onSave: { updatedReceipt in
                                 // Update the parsed receipt in the view model
                                 viewModel.parsedReceipts[selectedTab] = updatedReceipt
-                                
-                                // Get the current image to save with the receipt
-                                let imageToSave = images[selectedTab]
                                 
                                 // Create a new order from this receipt
                                 viewModel.saveReceipt(at: selectedTab)
@@ -116,16 +137,29 @@ struct SegmentedResultView: View {
                                     }
                                     .padding(.horizontal)
                                     
-                                    Button("Parse Receipt Manually") {
-                                        // Parse the current receipt text
-                                        let parser = ReceiptParserService()
-                                        let parsedReceipt = parser.parseReceipt(from: recognizedTexts[selectedTab])
-                                        
-                                        // Update or add to viewModel's parsedReceipts
-                                        if selectedTab < viewModel.parsedReceipts.count {
-                                            viewModel.parsedReceipts[selectedTab] = parsedReceipt
+                                    Button(viewModel.orderBeingEdited != nil ? "Parse Proof Manually" : "Parse Receipt Manually") {
+                                        if viewModel.orderBeingEdited != nil {
+                                            // Parse as proof if we're in proof mode
+                                            let parser = ProofParserService()
+                                            let parsedProof = parser.parseProof(from: recognizedTexts[selectedTab])
+                                            
+                                            // Update or add to viewModel's parsedProofs
+                                            if selectedTab < viewModel.parsedProofs.count {
+                                                viewModel.parsedProofs[selectedTab] = parsedProof
+                                            } else {
+                                                viewModel.parsedProofs.append(parsedProof)
+                                            }
                                         } else {
-                                            viewModel.parsedReceipts.append(parsedReceipt)
+                                            // Parse as receipt if we're in receipt mode
+                                            let parser = ReceiptParserService()
+                                            let parsedReceipt = parser.parseReceipt(from: recognizedTexts[selectedTab])
+                                            
+                                            // Update or add to viewModel's parsedReceipts
+                                            if selectedTab < viewModel.parsedReceipts.count {
+                                                viewModel.parsedReceipts[selectedTab] = parsedReceipt
+                                            } else {
+                                                viewModel.parsedReceipts.append(parsedReceipt)
+                                            }
                                         }
                                     }
                                     .buttonStyle(.borderedProminent)
@@ -136,7 +170,7 @@ struct SegmentedResultView: View {
                     }
                 }
             }
-            .navigationTitle("Receipt Details")
+            .navigationTitle(viewModel.orderBeingEdited != nil ? "Payment Proof" : "Receipt Details")
             .navigationBarTitleDisplayMode(.inline)
 //            .toolbar {
 //                ToolbarItem(placement: .primaryAction) {
@@ -156,7 +190,7 @@ struct SegmentedResultView: View {
                                 .font(.system(size: 60))
                                 .foregroundColor(.green)
                             
-                            Text("Order Added!")
+                            Text(viewModel.orderBeingEdited != nil ? "Proof Verified!" : "Order Added!")
                                 .font(.headline)
                                 .padding(.top)
                         }

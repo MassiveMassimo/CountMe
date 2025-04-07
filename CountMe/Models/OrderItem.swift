@@ -34,6 +34,7 @@ final class OrderItem {
     enum VerificationStatus: String, Codable {
         case verified = "Verified"
         case pending = "Pending"
+        case mismatch = "Mismatch"
         
         var color: Color {
             switch self {
@@ -41,6 +42,8 @@ final class OrderItem {
                 return .green
             case .pending:
                 return .orange
+            case .mismatch:
+                return .red
             }
         }
         
@@ -50,6 +53,8 @@ final class OrderItem {
                 return "checkmark.circle.fill"
             case .pending:
                 return "clock.fill"
+            case .mismatch:
+                return "xmark.circle.fill"
             }
         }
     }
