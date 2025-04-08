@@ -85,7 +85,7 @@ struct EditVerifiedView: View {
                                     TextField("Total Amount", value: $price, format: .currency(code: "IDR"))
                                         .keyboardType(.decimalPad)
                                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                                        .frame(width: 150)
+                                        .frame(width: 200)
                                 }
                                 
                                 HStack(alignment: .top) {
@@ -135,7 +135,7 @@ struct EditVerifiedView: View {
                                     TextField("Bank Name", text: $bankName)
                                         .textFieldStyle(RoundedBorderTextFieldStyle())
                                         .textContentType(.organizationName)
-                                        .frame(width: 150)
+                                        .frame(width: 200)
                                 }
                                 
                                 HStack {
@@ -144,7 +144,7 @@ struct EditVerifiedView: View {
                                     TextField("Payment Amount", value: $price, format: .currency(code: "IDR"))
                                         .keyboardType(.decimalPad)
                                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                                        .frame(width: 150)
+                                        .frame(width: 200)
                                 }
                                 
                                 DatePicker(
