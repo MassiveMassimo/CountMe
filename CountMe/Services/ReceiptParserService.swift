@@ -5,9 +5,7 @@ struct ParsedReceipt {
     var restaurantName: String = ""
     var orderNumber: String = ""
     var dateTime: Date?
-    var mainDish: String = ""
-    var mainDishPrice: Double = 0.0
-    var sideDishes: [(name: String, price: Double)] = []
+    var dishes: [(name: String, price: Double)] = []
     var totalPrice: Double = 0.0
     var paymentMethod: String = ""
     var rawText: String = ""
@@ -21,7 +19,7 @@ struct ParsedReceipt {
     }
     
     var calculatedTotal: Double {
-        return mainDishPrice + sideDishes.reduce(0) { $0 + $1.price }
+        return dishes.reduce(0) { $0 + $1.price }
     }
 }
 
@@ -52,18 +50,8 @@ class ReceiptParserService {
         extractTotal(from: lines, into: &receipt)
         extractPaymentMethod(from: lines, into: &receipt)
         
-        // Process items
-        let items = extractItems(from: lines)
-        
-        // Assign items to main dish and side dishes
-        if !items.isEmpty {
-            receipt.mainDish = items[0].name
-            receipt.mainDishPrice = items[0].price
-            
-            if items.count > 1 {
-                receipt.sideDishes = Array(items[1...])
-            }
-        }
+        // Process items and assign to dishes array
+        receipt.dishes = extractItems(from: lines)
         
         return receipt
     }
@@ -481,5 +469,3 @@ class ReceiptParserService {
         return Double(normalizedString)
     }
 }
-
-// add private extention

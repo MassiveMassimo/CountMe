@@ -71,31 +71,13 @@ struct ReceiptDetailView: View {
                         .padding(.vertical, 8)
                     }
                     
-                    GroupBox("Main Dish") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            TextField("Name", text: $editedReceipt.mainDish)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                            
-                            HStack {
-                                Text("Price")
-                                Spacer()
-                                TextField("Price", value: $editedReceipt.mainDishPrice, format: .currency(code: "IDR"))
-                                    .keyboardType(.decimalPad)
-                                    .multilineTextAlignment(.trailing)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .frame(width: 150)
-                            }
-                        }
-                        .padding(.vertical, 8)
-                    }
-                    
                     GroupBox {
                         VStack(alignment: .leading, spacing: 12) {
-                            ForEach(0..<editedReceipt.sideDishes.count, id: \.self) { index in
+                            ForEach(0..<editedReceipt.dishes.count, id: \.self) { index in
                                 VStack(spacing: 8) {
                                     TextField("Name", text: Binding(
-                                        get: { editedReceipt.sideDishes[index].name },
-                                        set: { editedReceipt.sideDishes[index].name = $0 }
+                                        get: { editedReceipt.dishes[index].name },
+                                        set: { editedReceipt.dishes[index].name = $0 }
                                     ))
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
                                     
@@ -103,8 +85,8 @@ struct ReceiptDetailView: View {
                                         Text("Price")
                                         Spacer()
                                         TextField("Price", value: Binding(
-                                            get: { editedReceipt.sideDishes[index].price },
-                                            set: { editedReceipt.sideDishes[index].price = $0 }
+                                            get: { editedReceipt.dishes[index].price },
+                                            set: { editedReceipt.dishes[index].price = $0 }
                                         ), format: .currency(code: "IDR"))
                                             .keyboardType(.decimalPad)
                                             .multilineTextAlignment(.trailing)
@@ -113,17 +95,17 @@ struct ReceiptDetailView: View {
                                     }
                                 }
                                 
-                                if index < editedReceipt.sideDishes.count - 1 {
+                                if index < editedReceipt.dishes.count - 1 {
                                     Divider()
                                 }
                             }
                             
                             Button {
                                 withAnimation {
-                                    editedReceipt.sideDishes.append((name: "", price: 0.0))
+                                    editedReceipt.dishes.append((name: "", price: 0.0))
                                 }
                             } label: {
-                                Label("Add Side Dish", systemImage: "plus")
+                                Label("Add Dish", systemImage: "plus")
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
@@ -133,9 +115,9 @@ struct ReceiptDetailView: View {
                         .padding(.vertical, 8)
                     } label: {
                         HStack {
-                            Text("Side Dishes")
+                            Text("Dishes")
                             Spacer()
-                            Text("\(editedReceipt.sideDishes.count)")
+                            Text("\(editedReceipt.dishes.count)")
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -202,27 +184,27 @@ struct ReceiptDetailView: View {
     }
 }
 
-#Preview {
-    let sampleReceipt = ParsedReceipt(
-        restaurantName: "Mama Djempol Binong",
-        orderNumber: "POS-170325-99",
-        dateTime: Date(),
-        mainDish: "Daging Sapi lada Hitam",
-        mainDishPrice: 16000,
-        sideDishes: [
-            (name: "Kentang Mustopa", price: 5000),
-            (name: "Nasi Putih", price: 4000)
-        ],
-        totalPrice: 25000,
-        rawText: "Sample OCR text"
-    )
-    
-    return NavigationStack {
-        ReceiptDetailView(
-            parsedReceipt: sampleReceipt,
-            receiptImage: UIImage(systemName: "doc.text")!,
-            onSave: { _ in },
-            onRetake: { }
-        )
-    }
-}
+//#Preview {
+//    let sampleReceipt = ParsedReceipt(
+//        restaurantName: "Mama Djempol Binong",
+//        orderNumber: "POS-170325-99",
+//        dateTime: Date(),
+//        mainDish: "Daging Sapi lada Hitam",
+//        mainDishPrice: 16000,
+//        sideDishes: [
+//            (name: "Kentang Mustopa", price: 5000),
+//            (name: "Nasi Putih", price: 4000)
+//        ],
+//        totalPrice: 25000,
+//        rawText: "Sample OCR text"
+//    )
+//    
+//    return NavigationStack {
+//        ReceiptDetailView(
+//            parsedReceipt: sampleReceipt,
+//            receiptImage: UIImage(systemName: "doc.text")!,
+//            onSave: { _ in },
+//            onRetake: { }
+//        )
+//    }
+//}

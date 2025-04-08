@@ -3,32 +3,41 @@ import SwiftData
 
 @Model
 final class OrderItem {
-    var title: String
+    var orderNumber: String
+    var orderNumberTail: String
     var dateTime: Date
     var price: Double
     @Attribute(.externalStorage) var receiptImage: Data?
     @Attribute(.externalStorage) var proofImage: Data?
-    var sideDishes: [String]
+    var dishes: [String]
     var verificationStatus: VerificationStatus
     var createdAt: Date
+    var restaurantName: String
+    var paymentMethod: String
     
     init(
-        title: String,
+        orderNumber: String,
         dateTime: Date,
         price: Double,
         receiptImage: Data? = nil,
         proofImage: Data? = nil,
-        sideDishes: [String],
-        verificationStatus: VerificationStatus
+        dishes: [String],
+        verificationStatus: VerificationStatus,
+        restaurantName: String = "",
+        paymentMethod: String = ""
     ) {
-        self.title = title
+        self.orderNumber = orderNumber
+        let components = orderNumber.split(separator: "-")
+        self.orderNumberTail = components.last.map(String.init) ?? orderNumber
         self.dateTime = dateTime
         self.price = price
         self.receiptImage = receiptImage
         self.proofImage = proofImage
-        self.sideDishes = sideDishes
+        self.dishes = dishes
         self.verificationStatus = verificationStatus
         self.createdAt = Date()
+        self.restaurantName = restaurantName
+        self.paymentMethod = paymentMethod
     }
     
     enum VerificationStatus: String, Codable {
@@ -65,25 +74,28 @@ extension OrderItem {
     static var sampleOrders: [OrderItem] {
         [
             OrderItem(
-                title: "Daging Lada Hitam",
+                orderNumber: "ORD-12345",
                 dateTime: Date().addingTimeInterval(-3600),
                 price: 45000,
-                sideDishes: ["Nasi Putih 1 Porsi", "Es Teh Manis"],
-                verificationStatus: .verified
+                dishes: ["Daging Lada Hitam", "Nasi Putih 1 Porsi", "Es Teh Manis"],
+                verificationStatus: .verified,
+                restaurantName: "Warung Nusantara"
             ),
             OrderItem(
-                title: "Ayam Bakar Madu",
+                orderNumber: "ORD-67890",
                 dateTime: Date().addingTimeInterval(-7200),
                 price: 38000,
-                sideDishes: ["Nasi Putih 1 Porsi", "Sayur Asem", "Es Jeruk"],
-                verificationStatus: .pending
+                dishes: ["Ayam Bakar Madu", "Nasi Putih 1 Porsi", "Sayur Asem", "Es Jeruk"],
+                verificationStatus: .pending,
+                restaurantName: "Rumah Makan Sederhana"
             ),
             OrderItem(
-                title: "Ikan Gurame Asam Manis",
+                orderNumber: "ORD-54321",
                 dateTime: Date().addingTimeInterval(-10800),
                 price: 65000,
-                sideDishes: ["Nasi Putih 2 Porsi", "Capcay Goreng"],
-                verificationStatus: .pending
+                dishes: ["Ikan Gurame Asam Manis", "Nasi Putih 2 Porsi", "Capcay Goreng"],
+                verificationStatus: .pending,
+                restaurantName: "Seafood Bahari"
             )
         ]
     }

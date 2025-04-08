@@ -8,10 +8,10 @@ struct EditVerifiedView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    @State private var title: String
+    @State private var orderNumber: String
     @State private var orderDateTime: Date
     @State private var price: Double
-    @State private var sideDishes: String
+    @State private var dishes: String
     @State private var bankName: String = ""
     
     init(
@@ -25,13 +25,13 @@ struct EditVerifiedView: View {
         self.paymentProofImage = paymentProofImage
         
         // Initialize state variables with order properties
-        self._title = State(initialValue: order.title)
+        self._orderNumber = State(initialValue: order.orderNumber)
         self._orderDateTime = State(initialValue: order.dateTime)
         self._price = State(initialValue: order.price)
         
         // Convert array of side dishes to comma-separated string
-        let sideDishesString = order.sideDishes.joined(separator: ", ")
-        self._sideDishes = State(initialValue: sideDishesString)
+        let dishesString = order.dishes.joined(separator: ", ")
+        self._dishes = State(initialValue: dishesString)
         
         // This could be extracted from proof image metadata in a real app
         self._bankName = State(initialValue: "")
@@ -67,9 +67,9 @@ struct EditVerifiedView: View {
                         GroupBox("Receipt Details") {
                             VStack(spacing: 15) {
                                 HStack {
-                                    Text("Order Title")
+                                    Text("Order Number")
                                     Spacer()
-                                    TextField("Order Title", text: $title)
+                                    TextField("Order Number", text: $orderNumber)
                                         .textFieldStyle(RoundedBorderTextFieldStyle())
                                         .frame(width: 200)
                                 }
@@ -89,9 +89,9 @@ struct EditVerifiedView: View {
                                 }
                                 
                                 HStack(alignment: .top) {
-                                    Text("Side Dishes")
+                                    Text("Dishes")
                                     Spacer()
-                                    TextField("Side Dishes (comma separated)", text: $sideDishes, axis: .vertical)
+                                    TextField("Dishes (comma separated)", text: $dishes, axis: .vertical)
                                         .textFieldStyle(RoundedBorderTextFieldStyle())
                                         .lineLimit(3)
                                         .frame(width: 200)
@@ -187,12 +187,12 @@ struct EditVerifiedView: View {
     
     private func saveChanges() {
         // Update order properties with edited values
-        order.title = title
+        order.orderNumber = orderNumber
         order.dateTime = orderDateTime
         order.price = price
         
         // Convert comma-separated string to array of side dishes
-        order.sideDishes = sideDishes
+        order.dishes = dishes
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }

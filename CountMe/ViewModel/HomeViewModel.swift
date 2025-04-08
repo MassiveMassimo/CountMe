@@ -71,7 +71,7 @@ class HomeViewModel {
     }
     
     func editOrder(_ order: OrderItem) {
-        print("Edit order: \(order.title)")
+        print("Edit order: \(order.orderNumber)")
         // Implement order editing functionality
         
         // After editing, save changes
@@ -84,8 +84,8 @@ class HomeViewModel {
     
     /// Create a new order from a parsed receipt
     func createOrderFromReceipt(_ receipt: ParsedReceipt, image: UIImage? = nil) {
-        // Create the main title from the main dish
-        let title = receipt.mainDish
+        // Use orderNumber directly as requested
+        let orderNumber = receipt.orderNumber
         
         // Format the date for display
         let dateTime = receipt.dateTime ?? Date()
@@ -93,8 +93,8 @@ class HomeViewModel {
         // Extract price
         let price = receipt.totalPrice
         
-        // Create side dishes array
-        let sideDishes = receipt.sideDishes.map { $0.name }
+        // Create dishes array from all dishes in the receipt
+        let dishNames = receipt.dishes.map { $0.name }
         
         // Convert image to data if provided
         var imageData: Data? = nil
@@ -104,11 +104,11 @@ class HomeViewModel {
         
         // Create a new order
         let newOrder = OrderItem(
-            title: title,
+            orderNumber: orderNumber,
             dateTime: dateTime,
             price: price,
             receiptImage: imageData,
-            sideDishes: sideDishes,
+            dishes: dishNames,
             verificationStatus: .pending
         )
         
