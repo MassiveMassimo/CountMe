@@ -1,14 +1,6 @@
-//
-//  ProofParserService.swift
-//  CountMe
-//
-//  Created by Stephen Hau on 26/03/25.
-//
-
 import Foundation
 
 struct ParsedProof {
-    
     var dateTime: Date?
     var totalPayment: Double = 0.0
     var rawText: String = ""
@@ -21,10 +13,33 @@ struct ParsedProof {
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
-    
 }
 
 class ProofParserService {
+    // Common regex patterns compiled once
+    private let datePatterns: [NSRegularExpression] = {
+        return [
+            try! NSRegularExpression(pattern: #"\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{1,2}:\d{1,2}:\d{1,2}"#),  // QRIS format
+            try! NSRegularExpression(pattern: #"\d{1,2}[/-]\d{1,2}[/-]\d{2,4}"#),                           // dd/mm/yyyy
+            try! NSRegularExpression(pattern: #"\d{4}[/-]\d{1,2}[/-]\d{1,2}"#)                              // yyyy-mm-dd
+        ]
+    }()
+    
+    private let pricePatterns: [NSRegularExpression] = {
+        return [
+            try! NSRegularExpression(pattern: #"(?:IDR|Rp\.?)\s*([0-9.,]+)"#),                             // Combined IDR/Rp pattern
+            try! NSRegularExpression(pattern: #"(?:Total|Amount|Jumlah|Pembayaran)\s*:?\s*([0-9.,]+)"#),   // Keywords
+            try! NSRegularExpression(pattern: #"([0-9]+[,.][0-9]*000)"#),                                  // Price with 000 ending
+            try! NSRegularExpression(pattern: #"\b([0-9]+)000\b"#)                                         // Simple 000 suffix
+        ]
+    }()
+    
+    // Common keywords
+    private let dateKeywords = ["Date:", "Transaction Date:", "Tanggal:", "Waktu:", "Time:"]
+    private let amountKeywords = ["Amount:", "Total:", "Price:", "Rp", "IDR", "Jumlah:", "Pembayaran:"]
+    
+    // Date formatter - reuse a single instance
+    private let dateFormatter = DateFormatter()
     
     /// Parse OCR text into structured proof data
     func parseProof(from ocrText: String) -> ParsedProof {
@@ -34,78 +49,56 @@ class ProofParserService {
         // Split the OCR text into lines
         let lines = ocrText.components(separatedBy: .newlines)
         
-        // Common payment terms to look forprice i
-        let dateKeywords = ["Date:", "Transaction Date:", "Tanggal:", "Waktu:", "Time:"]
-        let amountKeywords = ["Amount:", "Total:", "Price:", "Rp", "IDR", "Jumlah:", "Pembayaran:"]
-        
-        // Extract date from specific line patterns first
-        // Try to find a date in a common format directly
-        for (index, line) in lines.enumerated() {
-            // Look for date in dd/mm/yyyy format
-            if line.range(of: #"\d{1,2}/\d{1,2}/\d{2,4}"#, options: .regularExpression) != nil {
-                if let date = parseDate(line) {
+        // First pass - extract date and amount in a single loop for efficiency
+        for line in lines {
+            // Try to find date if we don't have one yet
+            if proof.dateTime == nil {
+                if let date = findDate(in: line) {
                     proof.dateTime = date
-                    break
                 }
             }
             
-            // Look for date in keyword labeled formats
-            for keyword in dateKeywords {
-                if line.contains(keyword) {
-                    let dateString = extractValue(from: line, after: keyword)
-                    if let date = parseDate(dateString) {
-                        proof.dateTime = date
-                        break
-                    }
+            // Try to find amount
+            if proof.totalPayment == 0.0 {
+                if let amount = extractPrice(from: line) {
+                    proof.totalPayment = amount
                 }
             }
             
-            // If we found a date, break out
-            if proof.dateTime != nil {
+            // If we've found both, we can stop processing
+            if proof.dateTime != nil && proof.totalPayment != 0.0 {
                 break
             }
         }
         
-        // Extract payment amount - check every line for monetary patterns
-        for line in lines {
-            // Special handling for BCA transfer format
-            if line.contains("Rp.") && line.contains(",") && line.contains(".") {
-                if let totalPayment = extractPrice(from: line) {
-                    proof.totalPayment = totalPayment
-                    break
-                }
-            }
-            
-            // Check for amount patterns with keywords
-            for keyword in amountKeywords {
-                if line.contains(keyword) {
-                    // Extract numbers from this line
-                    if let totalPayment = extractPrice(from: line) {
-                        proof.totalPayment = totalPayment
-                        break
-                    }
-                }
-            }
-            
-            // Look for patterns like numbers with "Rp" or currency symbol
-            if line.range(of: #"(Rp\.?|IDR)\s*[0-9.,]+"#, options: .regularExpression) != nil ||
-                line.range(of: #"[0-9.,]+\s*(Rp\.?|IDR)"#, options: .regularExpression) != nil {
-                if let totalPayment = extractPrice(from: line) {
-                    proof.totalPayment = totalPayment
-                    break
-                }
-            }
-            
-            // Look for numbers ending with "000" - common in Indonesian money amounts
-            if line.range(of: #"\b\d+[,.]000\b"#, options: .regularExpression) != nil {
-                if let totalPayment = extractPrice(from: line) {
-                    proof.totalPayment = totalPayment
-                    break
+        return proof
+    }
+    
+    // Consolidated date finding method
+    private func findDate(in line: String) -> Date? {
+        // First try using regex patterns
+        for pattern in datePatterns {
+            let nsRange = NSRange(line.startIndex..<line.endIndex, in: line)
+            if let match = pattern.firstMatch(in: line, range: nsRange),
+               let range = Range(match.range, in: line) {
+                let dateString = String(line[range])
+                if let date = parseDate(dateString) {
+                    return date
                 }
             }
         }
         
-        return proof
+        // Then try keyword-based detection
+        for keyword in dateKeywords {
+            if line.contains(keyword) {
+                let dateString = extractValue(from: line, after: keyword)
+                if let date = parseDate(dateString) {
+                    return date
+                }
+            }
+        }
+        
+        return nil
     }
     
     // Helper method to extract value after a separator
@@ -120,53 +113,76 @@ class ProofParserService {
     // Parse date string to Date object
     private func parseDate(_ dateString: String) -> Date? {
         let trimmed = dateString.trimmingCharacters(in: .whitespacesAndNewlines)
-        let dateFormatter = DateFormatter()
         
-        // Try common formats
+        // Common date formats - ordered by likelihood
         let formats = [
+            "dd MMM yyyy HH:mm:ss",  // QRIS format (09 Apr 2025 14:11:15)
+            "dd/MM/yyyy",            // Common format (05/04/2025)
             "dd/MM/yyyy HH:mm:ss",
-            "dd/MM/yy HH:mm:ss",
-            "dd/MM/yyyy",
-            "dd/MM/yy",
-            "MM/dd/yyyy HH:mm:ss",
-            "yyyy/MM/dd HH:mm:ss",
-            "dd MMM yyyy HH:mm:ss",
-            "dd MMM yyyy",
+            "yyyy-MM-dd",            // ISO format (2025-04-07)
+            "yyyy-MM-dd HH:mm:ss",
             "dd-MM-yyyy",
             "dd-MM-yyyy HH:mm:ss",
-            "yyyy-MM-dd",
-            "yyyy-MM-dd HH:mm:ss"
+            "dd/MM/yy",
+            "MM/dd/yyyy",
+            "dd MMM yyyy"
         ]
         
+        // Try each format
         for format in formats {
             dateFormatter.dateFormat = format
             if let date = dateFormatter.date(from: trimmed) {
                 return date
             }
-            
-            // Try extracting just the date part (for cases with multiple information in one line)
-            if let dateRegex = try? NSRegularExpression(pattern: #"\d{1,2}[/-]\d{1,2}[/-]\d{2,4}"#) {
-                let nsRange = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
-                if let match = dateRegex.firstMatch(in: trimmed, range: nsRange),
-                   let range = Range(match.range, in: trimmed) {
-                    let dateSubstring = String(trimmed[range])
-                    if format.contains("/") || format.contains("-") {
-                        if let date = dateFormatter.date(from: dateSubstring) {
-                            return date
-                        }
-                    }
+        }
+        
+        return nil
+    }
+    
+    // Extract price from string (handling different formats)
+    private func extractPrice(from text: String) -> Double? {
+        // Quick check for common prefixes
+        let lowercaseText = text.lowercased()
+        if !(lowercaseText.contains("rp") ||
+             lowercaseText.contains("idr") ||
+             lowercaseText.contains("total") ||
+             lowercaseText.contains("amount") ||
+             text.contains("000") ||
+             text.contains(",") ||
+             text.contains(".")) {
+            return nil // Skip lines unlikely to contain prices
+        }
+        
+        // First try with precompiled patterns
+        for pattern in pricePatterns {
+            let nsRange = NSRange(text.startIndex..<text.endIndex, in: text)
+            if let match = pattern.firstMatch(in: text, range: nsRange),
+               match.numberOfRanges > 1,
+               let captureRange = Range(match.range(at: 1), in: text) {
+                
+                let amountText = String(text[captureRange])
+                
+                // Process the amount based on the format
+                if let amount = processAmountText(amountText) {
+                    return amount
                 }
             }
+        }
+        
+        // If we got this far and the text has "IDR" or "Rp" and digits, try direct extraction
+        if (lowercaseText.contains("idr") || lowercaseText.contains("rp")) &&
+            lowercaseText.range(of: #"[0-9]"#, options: .regularExpression) != nil {
             
-            // Try extracting time part too
-            if let dateTimeRegex = try? NSRegularExpression(pattern: #"\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\s+\d{1,2}:\d{1,2}(:\d{1,2})?"#) {
-                let nsRange = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
-                if let match = dateTimeRegex.firstMatch(in: trimmed, range: nsRange),
-                   let range = Range(match.range, in: trimmed) {
-                    let dateTimeSubstring = String(trimmed[range])
-                    if format.contains("HH:mm") {
-                        if let date = dateFormatter.date(from: dateTimeSubstring) {
-                            return date
+            // Extract all potential numbers
+            if let regex = try? NSRegularExpression(pattern: #"[0-9.,]+"#) {
+                let nsRange = NSRange(text.startIndex..<text.endIndex, in: text)
+                let matches = regex.matches(in: text, range: nsRange)
+                
+                for match in matches.reversed() { // Try later numbers first (usually the amount)
+                    if let range = Range(match.range, in: text) {
+                        let amountText = String(text[range])
+                        if let amount = processAmountText(amountText), amount > 0 {
+                            return amount
                         }
                     }
                 }
@@ -176,102 +192,23 @@ class ProofParserService {
         return nil
     }
     
-    // Extract price from string (handling different formats)
-    private func extractPrice(from text: String) -> Double? {
-        // Common patterns to identify monetary amounts
-        let patterns = [
-            // BCA transfer format (like "Rp. 38,000.00")
-            #"Rp\.?\s*([0-9]+[,.][0-9]+(?:[,.][0-9]+)?)"#,
-            // Generic price pattern with currency symbol
-            #"(?:Rp\.?|IDR)\s*([0-9]+[,.][0-9]*)"#,
-            // Price with 000 ending (common in Indonesian format)
-            #"([0-9]+[,.][0-9]*000)"#,
-            // Just numbers ending with 000 (common in payment amounts)
-            #"([0-9]+000(?:\.[0-9]+)?)"#,
-            // Any number following the word "Total" or "Amount"
-            #"(?:Total|Amount|Jumlah|Pembayaran)\s*:?\s*([0-9]+[,.][0-9]*)"#
-        ]
-        
-        // Try each pattern
-        for pattern in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern) {
-                let nsRange = NSRange(text.startIndex..<text.endIndex, in: text)
-                if let match = regex.firstMatch(in: text, range: nsRange),
-                   match.numberOfRanges > 1,
-                   let captureRange = Range(match.range(at: 1), in: text) {
-                    
-                    let amountText = String(text[captureRange])
-                    
-                    // Handle BCA format specifically (38,000.00)
-                    if amountText.contains(",") && amountText.contains(".") {
-                        // In BCA format, comma is thousand separator, period is decimal
-                        let sanitized = amountText.replacingOccurrences(of: ",", with: "")
-                        if let amount = Double(sanitized) {
-                            return amount
-                        }
-                    }
-                    
-                    // Handle Indonesian format (38.000 or 120.500)
-                    if amountText.contains(".") && !amountText.contains(",") {
-                        // Check if it follows the pattern of period followed by exactly 3 digits
-                        if let regex = try? NSRegularExpression(pattern: #"[0-9]+\.[0-9]{3}$"#) {
-                            let nsRange = NSRange(amountText.startIndex..<amountText.endIndex, in: amountText)
-                            if regex.firstMatch(in: amountText, range: nsRange) != nil {
-                                let sanitized = amountText.replacingOccurrences(of: ".", with: "")
-                                if let amount = Double(sanitized) {
-                                    return amount
-                                }
-                            }
-                        }
-                        
-                        // Also check for amounts ending in 000
-                        if amountText.hasSuffix("000") || amountText.hasSuffix(".000") {
-                            let sanitized = amountText.replacingOccurrences(of: ".", with: "")
-                            if let amount = Double(sanitized) {
-                                return amount
-                            }
-                        }
-                    }
-                    
-                    // Try standard conversion after replacing comma with period
-                    let normalizedString = amountText.replacingOccurrences(of: ",", with: ".")
-                    if let amount = Double(normalizedString) {
-                        return amount
-                    }
-                }
-            }
+    // Centralized amount text processing
+    private func processAmountText(_ amountText: String) -> Double? {
+        // BCA format (9,000.00) - comma as thousands separator, period as decimal
+        if amountText.contains(",") && amountText.contains(".") {
+            let sanitized = amountText.replacingOccurrences(of: ",", with: "")
+            return Double(sanitized)
         }
         
-        // Additional fallback for simple format: just look for numbers ending with three zeros
-        if let regex = try? NSRegularExpression(pattern: #"\b([0-9]+)000\b"#) {
-            let nsRange = NSRange(text.startIndex..<text.endIndex, in: text)
-            if let match = regex.firstMatch(in: text, range: nsRange),
-               match.numberOfRanges > 1,
-               let captureRange = Range(match.range(at: 1), in: text) {
-                
-                let baseNumber = String(text[captureRange])
-                if let base = Double(baseNumber) {
-                    return base * 1000
-                }
-            }
+        // Indonesian format (9.000) - period as thousands separator
+        if amountText.contains(".") && !amountText.contains(",") &&
+            (amountText.hasSuffix("000") || amountText.range(of: #"\.[0-9]{3}$"#, options: .regularExpression) != nil) {
+            let sanitized = amountText.replacingOccurrences(of: ".", with: "")
+            return Double(sanitized)
         }
         
-        // Last resort: extract all number sequences and look for candidates
-        if let regex = try? NSRegularExpression(pattern: #"[0-9]+"#) {
-            let nsRange = NSRange(text.startIndex..<text.endIndex, in: text)
-            let matches = regex.matches(in: text, range: nsRange)
-            
-            for match in matches {
-                if let range = Range(match.range, in: text) {
-                    let numberStr = String(text[range])
-                    // Check if this could be an amount (typically > 1000 for a payment)
-                    if let number = Double(numberStr), number >= 1000 {
-                        return number
-                    }
-                }
-            }
-        }
-        
-        return nil
+        // Try standard numeric parsing (with comma as decimal)
+        let normalizedString = amountText.replacingOccurrences(of: ",", with: ".")
+        return Double(normalizedString)
     }
 }
