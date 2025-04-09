@@ -86,7 +86,10 @@ struct ReceiptDetailView: View {
                                         Spacer()
                                         TextField("Price", value: Binding(
                                             get: { editedReceipt.dishes[index].price },
-                                            set: { editedReceipt.dishes[index].price = $0 }
+                                            set: { newValue in
+                                                editedReceipt.dishes[index].price = newValue
+                                                editedReceipt.totalPrice = editedReceipt.calculatedTotal
+                                            }
                                         ), format: .currency(code: "IDR"))
                                             .keyboardType(.decimalPad)
                                             .multilineTextAlignment(.trailing)
@@ -103,6 +106,7 @@ struct ReceiptDetailView: View {
                             Button {
                                 withAnimation {
                                     editedReceipt.dishes.append((name: "", price: 0.0))
+                                    editedReceipt.totalPrice = editedReceipt.calculatedTotal 
                                 }
                             } label: {
                                 Label("Add Dish", systemImage: "plus")
@@ -181,6 +185,7 @@ struct ReceiptDetailView: View {
         .sheet(isPresented: $showRawData) {
             RawOCRDataView(rawText: parsedReceipt.rawText)
         }
+       
     }
 }
 
