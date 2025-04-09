@@ -28,6 +28,8 @@ struct HomePage: View {
             return allOrders.filter { $0.verificationStatus == .verified }
         case .pending:
             return allOrders.filter { $0.verificationStatus == .pending }
+        case .mismatch:
+            return allOrders.filter { $0.verificationStatus == .mismatch }
         }
     }
     

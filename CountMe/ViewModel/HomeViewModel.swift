@@ -50,6 +50,8 @@ class HomeViewModel {
                 return orders.filter { $0.verificationStatus == .verified }
             case .pending:
                 return orders.filter { $0.verificationStatus == .pending }
+            case .mismatch:
+                return orders.filter { $0.verificationStatus == .mismatch }
             }
         } catch {
             print("Failed to fetch orders: \(error)")
