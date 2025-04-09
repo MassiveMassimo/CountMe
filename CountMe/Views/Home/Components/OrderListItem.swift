@@ -100,12 +100,13 @@ struct OrderListItem: View {
         }
         .swipeActions(edge: .trailing) {
             // When using swipeActions, use a simple action that sets the state
-            Button(role: .destructive) {
+            Button() {
                 // The dialog will be shown via .confirmationDialog modifier
                 showDeleteConfirmation = true
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+            .tint(.red)
         }
         // This confirmation dialog is tied to the whole cell
         .confirmationDialog(
